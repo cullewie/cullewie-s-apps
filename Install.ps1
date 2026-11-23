@@ -110,6 +110,12 @@ function Get-InstalledVersion([string]$NamePattern, [string]$Exe) {
     if ($hit) { if ($hit.DisplayVersion) { [string]$hit.DisplayVersion } else { '0' } } else { $null }
 }
 
+# one result: kept for the summary, and printed as a row for cullewie-s-progress's window (its extra setup step)
+function Add-Result([string]$Name, [string]$Result, [string]$Detail) {
+    $script:results.Add([pscustomobject]@{ Name = $Name; Result = $Result; Detail = $Detail })
+    Write-Host ("##step`t{0} - {1}`t{2}" -f $Name, $Result, $(if ($Result -eq 'HATA') { 'FAIL' } else { 'PASS' }))
+}
+
 # ---------- the apps (order is the install order)
 # Update = $true: the newest version is read before downloading and a newer one replaces the installed one.
 # The others update themselves, so an installed copy is left alone.
@@ -141,7 +147,7 @@ foreach ($app in $Apps) {
     try {
         if ($app.AmdOnly -and -not $isAmd) { continue }
         $have = Get-InstalledVersion $app.Detect $app.Exe
-        if ($have -and -not $app.Update) { $results.Add([pscustomobject]@{ Name = $name; Result = 'zaten vardı'; Detail = $have }); continue }
+        if ($have -and -not $app.Update) { Add-Result $name 'zaten vardı' $have; continue }
 
         $url = $app.Url; $want = $null
         if ($app.Resolve) {
@@ -152,7 +158,7 @@ foreach ($app in $Apps) {
         if ($have -and $want) {
             $current = if ($name -eq 'TeamSpeak') { if (Test-Path $markerTs) { (Get-Content $markerTs -Raw).Trim() } else { '' } } else { $have }
             $same = if ($name -eq 'TeamSpeak') { $current -eq $want } else { -not (Test-Newer $current $want) }
-            if ($same) { $results.Add([pscustomobject]@{ Name = $name; Result = 'zaten vardı'; Detail = $want }); continue }
+            if ($same) { Add-Result $name 'zaten vardı' $want; continue }
         }
 
         Write-Host "$name indiriliyor..." -ForegroundColor Cyan
@@ -179,9 +185,9 @@ foreach ($app in $Apps) {
         if (-not $now) { throw 'Kurulum bitti ama program Windows''ta görünmüyor.' }
         if ($name -eq 'TeamSpeak') { Set-Content -Path $markerTs -Value $want }
         if ($name -eq 'AMD chipset' -or $code -in $restartCodes) { $restart = $true }
-        $results.Add([pscustomobject]@{ Name = $name; Result = $(if ($have) { 'güncellendi' } else { 'kuruldu' }); Detail = $(if ($want) { $want } else { $now }) })
+        Add-Result $name $(if ($have) { 'güncellendi' } else { 'kuruldu' }) $(if ($want) { $want } else { $now })
     }
-    catch { $results.Add([pscustomobject]@{ Name = $name; Result = 'HATA'; Detail = $_.Exception.Message }) }
+    catch { Add-Result $name 'HATA' $_.Exception.Message }
 }
 Remove-Item -LiteralPath $work -Recurse -Force -ErrorAction SilentlyContinue
 
