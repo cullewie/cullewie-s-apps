@@ -4,6 +4,8 @@
 param()
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'   # the progress bar made a 168 MB download take minutes
+# lines go through a pipe to cullewie-s-progress's window, which reads them as UTF-8 (Turkish letters)
+try { [Console]::OutputEncoding = New-Object Text.UTF8Encoding($false) } catch { }
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $UserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
 $Root = Join-Path $env:ProgramData 'Cullewie\Apps'
@@ -147,6 +149,9 @@ foreach ($app in $Apps) {
     try {
         if ($app.AmdOnly -and -not $isAmd) { continue }
         $have = Get-InstalledVersion $app.Detect $app.Exe
+        # registered but its program file is gone (an uninstall that left Windows Installer's record): an MSI install
+        # then does nothing, so it is repaired instead
+        $stale = $app.Exe -and -not $have -and [bool](Get-InstalledVersion $app.Detect)
         if ($have -and -not $app.Update) { Add-Result $name 'zaten vardı' $have; continue }
 
         $url = $app.Url; $want = $null
@@ -173,7 +178,7 @@ foreach ($app in $Apps) {
             throw "İmza tutmadı ($($s.Status), $($s.SignerCertificate.Subject)); dosya çalıştırılmadı."
         }
         Write-Host "$name kuruluyor..." -ForegroundColor Cyan
-        $code = if ($app.Msi) { Invoke-Installer "$env:SystemRoot\System32\msiexec.exe" "/i `"$file`" /qn /norestart" }
+        $code = if ($app.Msi) { Invoke-Installer "$env:SystemRoot\System32\msiexec.exe" ("/i `"$file`" /qn /norestart" + $(if ($stale) { ' REINSTALL=ALL REINSTALLMODE=vomus' } else { '' })) }
                 elseif ($app.AsUser) { Invoke-AsUser $file $app.Args }
                 else { Invoke-Installer $file $app.Args }
         Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue
