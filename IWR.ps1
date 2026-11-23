@@ -48,6 +48,12 @@ try {
     Move-Item -LiteralPath $stage -Destination (Join-Path $work 'after-setup.ps1') -Force
     $stage = $null
     Set-Content -LiteralPath (Join-Path $work 'after-setup.sha256') -Value $hash -Encoding ASCII
+    # the FV logo and title for the window during this run (only data; cullewie-s-progress deletes it at its last step).
+    # Logo paths from fv-logo.svg (viewBox 96); yellow ink, its inner V filled with the background, a dark #1c1c1c square
+    $brand = '{"title":"cullewie''s apps","font":"Bahnschrift","fontWeight":"SemiBold","viewBox":96,"iconBackground":"#1c1c1c","logo":[' +
+             '{"path":"M8 16 L78.9 16 L22.4 42.6 Z","fill":"#F5C400"},{"path":"M81.5 28 L48 90 L28.1 53.2 Z","fill":"#F5C400"},' +
+             '{"path":"M28 28 L68 28 L48 63 Z","fill":"background"}]}'
+    [IO.File]::WriteAllText((Join-Path $work 'brand.json'), $brand)
     Write-Host "Verified apps release: $($PayloadCommit.Substring(0, 12)). The apps install after All-in." -ForegroundColor Green
 
     $env:CULLEWIE_AUTO = 'all-in'
