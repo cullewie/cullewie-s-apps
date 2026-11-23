@@ -118,9 +118,9 @@ $Apps = @(
     @{ Name = 'TeamSpeak'; Detect = 'TeamSpeak'; Signer = 'TeamSpeak Systems GmbH'; File = 'teamspeak.msi'; Msi = $true; Update = $true; Resolve = { $u = Get-TeamSpeakUrl (Get-Page 'https://teamspeak.com/en/downloads/'); if ($u) { @{ Url = $u; Version = (Get-TeamSpeakLabel $u) } } } }
     @{ Name = 'Steam'; Detect = 'Steam'; Exe = "${env:ProgramFiles(x86)}\Steam\steam.exe"; Signer = 'Valve Corp.'; Url = 'https://cdn.akamai.steamstatic.com/client/installer/SteamSetup.exe'; File = 'steam.exe'; Args = '/S' }
     @{ Name = 'Spotify'; Detect = 'Spotify'; Exe = "$env:APPDATA\Spotify\Spotify.exe"; Signer = 'Spotify AB'; Url = 'https://download.scdn.co/SpotifyFullSetupX64.exe'; File = 'spotify.exe'; Args = '/silent'; AsUser = $true }
-    @{ Name = 'FACEIT AC'; Detect = 'FACEIT Anti-Cheat'; Signer = 'ESL FACEIT Group Ltd.'; Url = 'https://anticheat-client.faceit-cdn.net/FACEITInstaller_64.exe'; File = 'faceit.exe'; Args = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' }
+    @{ Name = 'FACEIT AC'; Detect = 'FACEIT Anti-Cheat'; Signer = 'ESL FACEIT Group Ltd.'; Url = 'https://anticheat-client.faceit-cdn.net/FACEITInstaller_64.exe'; File = 'faceit.exe'; Args = '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /MERGETASKS="!client"' }
     @{ Name = 'DDU'; Detect = 'Display Driver Uninstaller'; Exe = "$env:ProgramFiles\Display Driver Uninstaller\Display Driver Uninstaller.exe"; Signer = 'Wagnardsoft'; File = 'ddu.exe'; Args = '/S'; Update = $true; Resolve = { $page = Get-DduPage (Get-Page 'https://www.wagnardsoft.com/display-driver-uninstaller-ddu'); if ($page) { $v = Get-DduVersion (Get-Page $page); if ($v) { @{ Url = (Get-DduUrl $v); Version = $v } } } } }
-    @{ Name = 'AMD chipset'; Detect = 'AMD Chipset Software'; Signer = 'Advanced Micro Devices'; File = 'chipset.exe'; Args = '/S'; Update = $true; AmdOnly = $true; Headers = @{ Referer = 'https://www.amd.com/' }; Resolve = { $u = Get-ChipsetUrl (Get-Page 'https://www.amd.com/en/support/downloads/drivers.html/chipsets/am5/x870.html'); if ($u) { @{ Url = $u; Version = [regex]::Match($u, '_(\d+(?:\.\d+)+)\.exe$').Groups[1].Value } } } }
+    @{ Name = 'AMD chipset'; Detect = 'AMD Chipset Software'; Signer = 'Advanced Micro Devices'; File = 'chipset.exe'; Args = '/S'; RestartCodes = @(2); Update = $true; AmdOnly = $true; Headers = @{ Referer = 'https://www.amd.com/' }; Resolve = { $u = Get-ChipsetUrl (Get-Page 'https://www.amd.com/en/support/downloads/drivers.html/chipsets/am5/x870.html'); if ($u) { @{ Url = $u; Version = [regex]::Match($u, '_(\d+(?:\.\d+)+)\.exe$').Groups[1].Value } } } }
 )
 
 # ---------- main
@@ -172,12 +172,13 @@ foreach ($app in $Apps) {
                 else { Invoke-Installer $file $app.Args }
         Remove-Item -LiteralPath $file -Force -ErrorAction SilentlyContinue
         if ($code -eq -1) { throw 'Kurulum 15 dakikada bitmedi, durduruldu.' }
-        if ($code -notin 0, 3010, 1641) { throw "Kurulum hata koduyla bitti: $code" }
+        $restartCodes = @(3010, 1641) + @($app.RestartCodes | Where-Object { $_ -ne $null })
+        if ($code -ne 0 -and $code -notin $restartCodes) { throw "Kurulum hata koduyla bitti: $code" }
         $now = $null
         for ($i = 0; $i -lt 15 -and -not $now; $i++) { $now = Get-InstalledVersion $app.Detect $app.Exe; if (-not $now) { Start-Sleep -Seconds 2 } }
         if (-not $now) { throw 'Kurulum bitti ama program Windows''ta görünmüyor.' }
         if ($name -eq 'TeamSpeak') { Set-Content -Path $markerTs -Value $want }
-        if ($name -eq 'AMD chipset' -or $code -in 3010, 1641) { $restart = $true }
+        if ($name -eq 'AMD chipset' -or $code -in $restartCodes) { $restart = $true }
         $results.Add([pscustomobject]@{ Name = $name; Result = $(if ($have) { 'güncellendi' } else { 'kuruldu' }); Detail = $(if ($want) { $want } else { $now }) })
     }
     catch { $results.Add([pscustomobject]@{ Name = $name; Result = 'HATA'; Detail = $_.Exception.Message }) }
