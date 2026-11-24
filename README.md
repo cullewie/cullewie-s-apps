@@ -8,7 +8,9 @@ Başlat menüsünde **PowerShell**'e sağ tıkla, **Yönetici olarak çalıştı
 iwr 'https://github.com/cullewie/cullewie-s-apps/raw/refs/heads/main/IWR.ps1' -useb | iex
 ```
 
-Pencere açılır, All-in mod sormadan başlar. Bilgisayar birkaç kez kendiliğinden yeniden başlar; her açılışta oturum açman yeterli. Son açılışta uygulamalar kurulur, her biri pencerede kendi satırında görünür. Sonra Digital Vibrance sorulur, disk temizlenir ve bilgisayar son kez yeniden başlar.
+Pencere açılır, All-in mod sormadan başlar. Önce bekleyen Windows güncellemeleri kurulur; gerekirse bilgisayar yeniden başlar ve kurulum kendiliğinden devam eder. Bilgisayar birkaç kez kendiliğinden yeniden başlar; her açılışta oturum açman yeterli. Son açılışta uygulamalar kurulur, her biri pencerede kendi satırında görünür. Uygulamalardan sonra hizmet ayarları bir kez daha uygulanır, çünkü bazı kurulumlar (örneğin Chrome) Windows Update hizmetlerini geri açabiliyor. Sonra Digital Vibrance sorulur, disk temizlenir ve bilgisayar son kez yeniden başlar.
+
+All-in bitince Microsoft Store kaldırılmış, winget kilitlenmiş, Windows Update kapalı olur. Uygulamalar winget kullanmaz, doğrudan üreticinin sunucusundan iner.
 
 ## Kurulan uygulamalar
 
